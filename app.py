@@ -90,7 +90,6 @@ if uploaded_file is not None:
 💡 **重寫建議**：[具體的改寫指引與詞語建議]
 """
 
-                    # 呼叫 Gemini 1.5 Flash 圖像模型
                     # 呼叫 OpenRouter 免費圖像模型
                     response = client.chat.completions.create(
                         model="google/gemini-2.0-flash-exp:free",
@@ -104,16 +103,6 @@ if uploaded_file is not None:
                                         "type": "image_url",
                                         "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
                                     }
-                                ]
-                            }
-                        ]
-                    )
-
-                    # 呈現評改結果
-                    st.markdown(response.choices[0].message.content)
-
-                except Exception as e:
-                    st.error(f"評改失敗：{str(e)}")
                                 ]
                             }
                         ]
