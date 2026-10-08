@@ -26,19 +26,18 @@ if uploaded_file is not None:
             st.error("⚠️ 請先在左側邊欄輸入你的 OpenRouter API Key！")
         else:
             with st.spinner("AI 老師正在認真批閱作文中，請稍候..."):
-                try:
-                    # 將相片轉為 Base64 格式
-                    bytes_data = uploaded_file.getvalue()
-                    base64_image = base64.b64encode(bytes_data).decode('utf-8')
+                # 將相片轉為 Base64 格式
+                bytes_data = uploaded_file.getvalue()
+                base64_image = base64.b64encode(bytes_data).decode('utf-8')
 
-                    # 初始化 OpenRouter 用戶端 (香港順暢連線)
-                    client = OpenAI(
-                        base_url="https://openrouter.ai/api/v1",
-                        api_key=api_key,
-                    )
+                # 初始化 OpenRouter 用戶端 (香港順暢連線)
+                client = OpenAI(
+                    base_url="https://openrouter.ai/api/v1",
+                    api_key=api_key,
+                )
 
-                    # 評語系統 Prompt (包含香港評分標準)
-                    system_prompt = """
+                # 評語系統 Prompt (包含香港評分標準)
+                system_prompt = """
 你是一位經驗豐富、眼光獨到且語氣嚴厲但有耐心的香港小學四年級中文科老師。
 請根據《我拯救了______（一種動物）》評分表評改學生作文。
 
@@ -90,26 +89,39 @@ if uploaded_file is not None:
 💡 **重寫建議**：[具體的改寫指引與詞語建議]
 """
 
-                    # 呼叫 OpenRouter 免費圖像模型
-                    response = client.chat.completions.create(
-                        model="google/gemini-2.0-flash-exp:free",
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {
-                                "role": "user",
-                                "content": [
-                                    {"type": "text", "text": "請根據評分標準評改這篇作文圖片："},
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
-                                    }
-                                ]
-                            }
-                        ]
-                    )
+                # 設定優先選用的 Vision 模型列表（若第一個找不到，自動嘗試下一個）
+                candidate_models = [
+                    "google/gemini-2.5-flash",
+                    "google/gemini-flash-1.5",
+                    "google/gemini-2.0-flash-001",
+                    "openai/gpt-4o-mini"
+                ]
 
-                    # 呈現評改結果
-                    st.markdown(response.choices[0].message.content)
+                success = False
+                for model_name in candidate_models:
+                    try:
+                        response = client.chat.completions.create(
+                            model=model_name,
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {
+                                    "role": "user",
+                                    "content": [
+                                        {"type": "text", "text": "請根據評分標準評改這篇作文圖片："},
+                                        {
+                                            "type": "image_url",
+                                            "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+                                        }
+                                    ]
+                                }
+                            ]
+                        )
+                        st.markdown(response.choices[0].message.content)
+                        success = True
+                        break  # 成功生成即跳出迴圈
+                    except Exception as err:
+                        # 記錄失敗的模型並嘗試下一個
+                        continue
 
-                except Exception as e:
-                    st.error(f"評改失敗：{str(e)}")
+                if not success:
+                    st.error("評改失敗：無法連接 OpenRouter 影像模型，請檢查 API Key 是否正確或有足夠額度。")
