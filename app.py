@@ -91,8 +91,9 @@ if uploaded_file is not None:
 """
 
                     # 呼叫 Gemini 1.5 Flash 圖像模型
+                    # 呼叫 OpenRouter 免費圖像模型
                     response = client.chat.completions.create(
-model="google/gemini-2.0-flash-001",
+                        model="google/gemini-2.0-flash-exp:free",
                         messages=[
                             {"role": "system", "content": system_prompt},
                             {
@@ -103,6 +104,16 @@ model="google/gemini-2.0-flash-001",
                                         "type": "image_url",
                                         "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
                                     }
+                                ]
+                            }
+                        ]
+                    )
+
+                    # 呈現評改結果
+                    st.markdown(response.choices[0].message.content)
+
+                except Exception as e:
+                    st.error(f"評改失敗：{str(e)}")
                                 ]
                             }
                         ]
