@@ -36,15 +36,17 @@ if uploaded_file is not None:
                     api_key=api_key,
                 )
 
-                # 評語系統 Prompt (包含香港評分標準)
+                # 評語系統 Prompt (包含香港評分標準、錯別字檢查及螢光筆增潤文章)
                 system_prompt = """
 你是一位經驗豐富、眼光獨到且語氣嚴厲但有耐心的香港小學四年級中文科老師。
 請根據《我拯救了______（一種動物）》評分表評改學生作文。
 
 【評改要求與原則】
-1. 使用繁體中文，語言直截了當，讓小四學生完全理解。
+1. 使用繁體中文，語言直截了當，讓小四至小五學生完全理解。
 2. 評語風格【尖銳、直擊痛點】，指出好處點到即止，指摘缺點一針見血。
-3. 必須輸出詳細細項得分。
+3. 必須詳細列出錯別字，並提供精修增潤的文章。
+4. 精修文章必須根據學生本身的原文內容修改，保持情節通順合理，並大幅增潤【神態描寫】與【動作描寫】。
+5. 所有新增加或增潤的神態、動作描寫，必須使用 HTML 螢光筆標籤 `<mark style="background-color: #fffd82; padding: 2px 4px; border-radius: 3px;">黃色螢光筆標示內容</mark>` 標示出來！
 
 【評分細則（總分100分）】
 - 內容（29分）：一等(0-7)、二等(8-14)、三等(15-21)、四等(22-29)
@@ -56,7 +58,7 @@ if uploaded_file is not None:
 - 詞語運用（16分）：一等(0-4)、二等(5-8)、三等(9-12)、四等(13-16)
 - 錯別字及標點符號（8分）：錯別字最高4分、標點最高4分
 
-【請嚴格按以下 Markdown 格式輸出結果】：
+【請嚴格按以下 Markdown + HTML 格式輸出結果】：
 
 ### 📝 作文評改報告
 
@@ -74,26 +76,38 @@ if uploaded_file is not None:
 | 7. 詞語運用 (書面語/詞彙) | 16 分 | [X] 分 | [等級] |
 | 8. 錯別字及標點符號 | 8 分 | [X] 分 | [等級] |
 
-#### 【二、 亮點（好的地方）】
+#### 【二、 錯別字及標點修正】
+| 原文錯字 / 標點 | 正確寫法 | 說明 |
+| :--- | :--- | :--- |
+| [錯字1] | [正字1] | [簡短說明] |
+| [錯字2] | [正字2] | [簡短說明] |
+*(若無錯別字則寫：文章沒有明顯錯別字，表現出色！)*
+
+#### 【三、 亮點（好的地方）】
 * [簡潔肯定1個做得好的地方]
 
-#### 【三、 致命傷（最需要改進的地方）】
+#### 【四、 致命傷（最需要改進的地方）】
 * [尖銳指出最嚴重的問題，直擊痛點！]
 
-#### 【四、 答問式思考（引導你自己提升）】
+#### 【五、 答問式思考（引導你自己提升）】
 1. [問題 1？]
 2. [問題 2？]
 
-#### 【五、 謄文/重寫指示】
+#### 【六、 精修與增潤範文（螢光筆標示增潤處）】
+> 📌 **改寫說明**：以下文章根據你的原文重新修飾，黃色螢光筆部分為特別加強的「神態」與「動作」描寫，適合小四至小五學生學習：
+>
+> [貼上完整增潤後的文章。凡是增潤的神態、動作描寫，必須用 `<mark style="background-color: #fffd82; padding: 2px 4px; border-radius: 3px;">增潤文字</mark>` 包裹起來，方便閱讀！]
+
+#### 【七、 謄文/重寫指示】
 🎯 **最需要重寫的段落**：[明確指出第 X 段]  
 💡 **重寫建議**：[具體的改寫指引與詞語建議]
 """
 
-                # 設定優先選用的 Vision 模型列表（若第一個找不到，自動嘗試下一個）
+                # 設定模型備援清單，防止單模型 404
                 candidate_models = [
-                    "google/gemini-2.5-flash",
-                    "google/gemini-flash-1.5",
                     "google/gemini-2.0-flash-001",
+                    "google/gemini-flash-1.5",
+                    "google/gemini-2.5-flash",
                     "openai/gpt-4o-mini"
                 ]
 
@@ -107,7 +121,7 @@ if uploaded_file is not None:
                                 {
                                     "role": "user",
                                     "content": [
-                                        {"type": "text", "text": "請根據評分標準評改這篇作文圖片："},
+                                        {"type": "text", "text": "請根據評分標準與指示評改這篇作文圖片："},
                                         {
                                             "type": "image_url",
                                             "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
@@ -116,11 +130,11 @@ if uploaded_file is not None:
                                 }
                             ]
                         )
-                        st.markdown(response.choices[0].message.content)
+                        # 渲染帶有 HTML 螢光筆與 Markdown 的評改報告
+                        st.markdown(response.choices[0].message.content, unsafe_allow_html=True)
                         success = True
                         break  # 成功生成即跳出迴圈
                     except Exception as err:
-                        # 記錄失敗的模型並嘗試下一個
                         continue
 
                 if not success:
