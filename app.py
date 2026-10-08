@@ -92,7 +92,7 @@ if uploaded_file is not None:
 
                     # 呼叫 Gemini 1.5 Flash 圖像模型
                     response = client.chat.completions.create(
-                        model="google/gemini-flash-1.5-8b",
+model="google/gemini-2.0-flash-001",
                         messages=[
                             {"role": "system", "content": system_prompt},
                             {
